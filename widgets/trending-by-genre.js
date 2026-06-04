@@ -1,7 +1,7 @@
 WidgetMetadata = {
   id: "forward.trending-by-genre",
   title: "流行趋势分类",
-  version: "1.1.0",
+  version: "1.2.0",
   requiredVersion: "0.0.1",
   description: "默认展示近期整体流行趋势，列表内提供恐怖、动画、爱情、喜剧等分类入口。",
   author: "Forward",
@@ -90,6 +90,11 @@ async function loadTrendingByGenre(params = {}) {
   const language = params.language || "zh-CN";
   const window = params.window === "day" ? "day" : "week";
   const media = normalizeMedia(params.media);
+  const genreId = String(params.genreId || "");
+
+  if (GENRES[genreId]) {
+    return loadCategoryItems(genreId, window, media, language, page);
+  }
 
   const res = await Widget.tmdb.get(`trending/${media}/${window}`, {
     params: { page, language },
@@ -113,7 +118,7 @@ async function loadDetail(link) {
   const media = normalizeMedia(parsed.media);
   const window = parsed.window === "day" ? "day" : "week";
   const language = parsed.language || "zh-CN";
-  const relatedItems = await loadCategoryItems(parsed.genre, window, media, language);
+  const relatedItems = await loadCategoryItems(parsed.genre, window, media, language, 1);
 
   return {
     id: link,
@@ -121,6 +126,8 @@ async function loadDetail(link) {
     title: `${genre.title}热门趋势`,
     link,
     description: "按当前分类聚合近期热门电影和剧集。",
+    genreItems: buildGenreItems(),
+    childItems: relatedItems,
     relatedItems,
   };
 }
@@ -156,7 +163,7 @@ function withMediaType(item, media) {
   return { ...item, media_type: media };
 }
 
-async function loadCategoryItems(genre, window, media, language) {
+async function loadCategoryItems(genre, window, media, language, page) {
   const requests = media === "all" ? ["movie", "tv"] : [media];
   const groups = await Promise.all(
     requests.map(async (mediaType) => {
@@ -164,7 +171,7 @@ async function loadCategoryItems(genre, window, media, language) {
       if (!genreId) return [];
       const res = await Widget.tmdb.get(`discover/${mediaType}`, {
         params: {
-          page: 1,
+          page,
           language,
           sort_by: window === "day" ? "popularity.desc" : "vote_count.desc",
           with_genres: genreId,
@@ -189,6 +196,13 @@ function buildCategoryItems(window, media, language) {
       link: buildCategoryLink(genre, window, media, language),
     };
   });
+}
+
+function buildGenreItems() {
+  return CATEGORY_ORDER.map((genre) => ({
+    id: genre,
+    title: GENRES[genre].title,
+  }));
 }
 
 function buildCategoryLink(genre, window, media, language) {

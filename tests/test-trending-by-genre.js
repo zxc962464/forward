@@ -130,9 +130,17 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(detail.type, "url");
   assert.equal(detail.title, "喜剧热门趋势");
   assert.equal(Array.isArray(detail.relatedItems), true);
+  assert.equal(Array.isArray(detail.childItems), true);
+  assert.equal(Array.isArray(detail.genreItems), true);
   assert.equal(detail.relatedItems.length, 2);
+  assert.equal(detail.childItems.length, 2);
   assert.equal(detail.relatedItems[0].id, 401);
   assert.equal(detail.relatedItems[0].mediaType, "movie");
+  assert.equal(detail.genreItems.some((item) => item.id === "animation"), true);
+
+  const genreList = await loadTrendingByGenre({ genreId: "comedy", window: "week", media: "all", page: 2, language: "zh-CN" });
+  assert.equal(genreList.length, 2);
+  assert.equal(genreList[0].id, 401);
 
   const results = await search({ keyword: "show", page: 1, language: "zh-CN" });
   assert.equal(results.length, 1);
@@ -143,6 +151,7 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.ok(calls.some((call) => call.api === "trending/movie/day" && call.params.page === 2));
   assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 35));
   assert.ok(calls.some((call) => call.api === "discover/tv" && call.params.with_genres === 35));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.page === 2));
   assert.ok(calls.some((call) => call.api === "search/multi" && call.params.query === "show"));
 
   console.log("ok", calls);
