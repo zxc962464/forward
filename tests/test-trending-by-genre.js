@@ -112,10 +112,13 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(all[0].type, "url");
   assert.equal(all[0].title, "恐怖");
   assert.ok(all[0].link.startsWith("category:horror:"));
-  assert.equal(all[14].type, "tmdb");
-  assert.equal(all[14].mediaType, "movie");
-  assert.equal(all[14].posterPath, "/horror.jpg");
-  assert.equal(all[14].poster_path, undefined);
+  assert.equal(Array.isArray(all[0].childItems), true);
+  assert.equal(Array.isArray(all[0].relatedItems), true);
+  assert.ok(all[0].genreItems.some((item) => item.id === "horror"));
+  assert.equal(all[6].type, "tmdb");
+  assert.equal(all[6].mediaType, "movie");
+  assert.equal(all[6].posterPath, "/horror.jpg");
+  assert.equal(all[6].poster_path, undefined);
 
   const pageTwo = await loadTrendingByGenre({ window: "week", media: "all", page: 2 });
   assert.equal(pageTwo.length, 2);

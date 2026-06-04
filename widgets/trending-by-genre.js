@@ -1,7 +1,7 @@
 WidgetMetadata = {
   id: "forward.trending-by-genre",
   title: "流行趋势分类",
-  version: "1.2.0",
+  version: "1.3.0",
   requiredVersion: "0.0.1",
   description: "默认展示近期整体流行趋势，列表内提供恐怖、动画、爱情、喜剧等分类入口。",
   author: "Forward",
@@ -75,6 +75,10 @@ const CATEGORY_ORDER = [
   "comedy",
   "action",
   "science_fiction",
+];
+
+const DETAIL_GENRE_ORDER = [
+  ...CATEGORY_ORDER,
   "mystery",
   "drama",
   "crime",
@@ -107,7 +111,8 @@ async function loadTrendingByGenre(params = {}) {
     .filter(Boolean);
 
   if (page > 1) return items;
-  return [...buildCategoryItems(window, media, language), ...items];
+  const categoryItems = await buildCategoryItems(window, media, language);
+  return [...categoryItems, ...items];
 }
 
 async function loadDetail(link) {
@@ -118,7 +123,7 @@ async function loadDetail(link) {
   const media = normalizeMedia(parsed.media);
   const window = parsed.window === "day" ? "day" : "week";
   const language = parsed.language || "zh-CN";
-  const relatedItems = await loadCategoryItems(parsed.genre, window, media, language, 1);
+  const relatedItems = await loadCategoryItems(parsed.genre, window, media, language, 1, 30);
 
   return {
     id: link,
@@ -163,7 +168,7 @@ function withMediaType(item, media) {
   return { ...item, media_type: media };
 }
 
-async function loadCategoryItems(genre, window, media, language, page) {
+async function loadCategoryItems(genre, window, media, language, page, limit) {
   const requests = media === "all" ? ["movie", "tv"] : [media];
   const groups = await Promise.all(
     requests.map(async (mediaType) => {
@@ -182,24 +187,30 @@ async function loadCategoryItems(genre, window, media, language, page) {
     })
   );
 
-  return groups.flat().sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 30);
+  return groups.flat().sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, limit || 30);
 }
 
-function buildCategoryItems(window, media, language) {
-  return CATEGORY_ORDER.map((genre) => {
+async function buildCategoryItems(window, media, language) {
+  const items = await Promise.all(CATEGORY_ORDER.map(async (genre) => {
     const data = GENRES[genre];
+    const childItems = await loadCategoryItems(genre, window, media, language, 1, 8);
     return {
       id: `category:${genre}`,
       type: "url",
       title: data.title,
       description: `查看${data.title}类近期热门资源`,
+      mediaType: "movie",
+      genreItems: [{ id: genre, title: data.title }],
+      childItems,
+      relatedItems: childItems,
       link: buildCategoryLink(genre, window, media, language),
     };
-  });
+  }));
+  return items;
 }
 
 function buildGenreItems() {
-  return CATEGORY_ORDER.map((genre) => ({
+  return DETAIL_GENRE_ORDER.map((genre) => ({
     id: genre,
     title: GENRES[genre].title,
   }));
