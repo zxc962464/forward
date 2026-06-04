@@ -1,7 +1,7 @@
 WidgetMetadata = {
   id: "forward.trending-by-genre",
   title: "流行趋势分类",
-  version: "1.0.0",
+  version: "1.1.0",
   requiredVersion: "0.0.1",
   description: "默认展示近期整体流行趋势，也可以按恐怖、动画、爱情、喜剧等类别筛选电影和剧集。",
   author: "Forward",
@@ -98,6 +98,10 @@ async function loadTrendingByGenre(params = {}) {
   const media = normalizeMedia(params.media);
   const genre = params.genre || "all";
 
+  if (genre !== "all") {
+    return loadDiscoverByGenre(genre, window, media, page, language);
+  }
+
   const res = await Widget.tmdb.get(`trending/${media}/${window}`, {
     params: { page, language },
   });
@@ -147,6 +151,30 @@ function matchesGenre(item, genre) {
   const genreId = GENRES[genre] && GENRES[genre][mediaType];
   if (!genreId) return false;
   return (item.genre_ids || []).includes(genreId);
+}
+
+async function loadDiscoverByGenre(genre, window, media, page, language) {
+  const requests = media === "all" ? ["movie", "tv"] : [media];
+  const groups = await Promise.all(
+    requests.map(async (mediaType) => {
+      const genreId = GENRES[genre] && GENRES[genre][mediaType];
+      if (!genreId) return [];
+      const res = await Widget.tmdb.get(`discover/${mediaType}`, {
+        params: {
+          page,
+          language,
+          sort_by: window === "day" ? "popularity.desc" : "vote_count.desc",
+          with_genres: genreId,
+          include_adult: false,
+        },
+      });
+      return (res.results || [])
+        .map((item) => mapTmdbItem({ ...item, media_type: mediaType }))
+        .filter(Boolean);
+    })
+  );
+
+  return groups.flat().sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
 }
 
 function mapTmdbItem(item) {

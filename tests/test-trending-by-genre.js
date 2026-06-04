@@ -50,6 +50,39 @@ global.Widget = {
           ],
         };
       }
+      if (api === "discover/movie") {
+        const genre = options.params && options.params.with_genres;
+        if (genre === 27) {
+          return {
+            results: [
+              {
+                id: 401,
+                title: "Discover Horror",
+                genre_ids: [27],
+                poster_path: "/discover-horror.jpg",
+                vote_average: 7.8,
+              },
+            ],
+          };
+        }
+        if (genre === 10749) {
+          return {
+            results: [
+              {
+                id: 402,
+                title: "Discover Romance",
+                genre_ids: [10749],
+                poster_path: "/discover-romance.jpg",
+                vote_average: 8.1,
+              },
+            ],
+          };
+        }
+        return { results: [] };
+      }
+      if (api === "discover/tv") {
+        return { results: [] };
+      }
       if (api === "search/multi") {
         return {
           results: [
@@ -90,11 +123,11 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
 
   const horror = await loadTrendingByGenre({ genre: "horror", window: "week", media: "all", page: 1 });
   assert.equal(horror.length, 1);
-  assert.equal(horror[0].id, 101);
+  assert.equal(horror[0].id, 401);
 
   const romanceMovies = await loadTrendingByGenre({ genre: "romance", window: "day", media: "movie", page: 2 });
   assert.equal(romanceMovies.length, 1);
-  assert.equal(romanceMovies[0].id, 201);
+  assert.equal(romanceMovies[0].id, 402);
   assert.equal(romanceMovies[0].mediaType, "movie");
 
   const results = await search({ keyword: "show", page: 1, language: "zh-CN" });
@@ -103,7 +136,8 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(results[0].mediaType, "tv");
 
   assert.ok(calls.some((call) => call.api === "trending/all/week" && call.params.language === "zh-CN"));
-  assert.ok(calls.some((call) => call.api === "trending/movie/day" && call.params.page === 2));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 27));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 10749 && call.params.page === 2));
   assert.ok(calls.some((call) => call.api === "search/multi" && call.params.query === "show"));
 
   console.log("ok", calls);
