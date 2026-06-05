@@ -126,27 +126,31 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(WidgetMetadata.id, "forward.trending-by-genre");
   assert.equal(WidgetMetadata.modules[0].functionName, "loadTrendingByGenre");
   assert.equal(WidgetMetadata.search.functionName, "search");
-  assert.equal(WidgetMetadata.modules[0].params.some((param) => param.name === "filter"), true);
-  assert.equal(WidgetMetadata.modules[0].params.some((param) => param.name === "country"), false);
-  assert.equal(WidgetMetadata.modules[0].params.some((param) => param.name === "genre"), false);
+  assert.equal(WidgetMetadata.modules.length, 11);
+  assert.equal(WidgetMetadata.modules[0].title, "全部地区");
+  assert.equal(WidgetMetadata.modules[1].title, "中国大陆");
+  assert.equal(WidgetMetadata.modules[4].title, "日本");
+  assert.equal(WidgetMetadata.modules[1].params.some((param) => param.name === "country" && param.type === "constant" && param.value === "CN"), true);
+  assert.equal(WidgetMetadata.modules[1].params.some((param) => param.name === "genre"), true);
+  assert.equal(WidgetMetadata.modules[1].params.some((param) => param.name === "filter"), false);
 
-  const all = await loadTrendingByGenre({ filter: "all:all", window: "week", media: "all", page: 1, language: "zh-CN" });
+  const all = await loadTrendingByGenre({ genre: "all", country: "all", window: "week", media: "all", page: 1, language: "zh-CN" });
   assert.equal(all.length, 2);
   assert.equal(all[0].type, "tmdb");
   assert.equal(all[0].mediaType, "movie");
   assert.equal(all[0].posterPath, "/horror.jpg");
   assert.equal(all[0].poster_path, undefined);
 
-  const horror = await loadTrendingByGenre({ filter: "JP:horror", window: "week", media: "all", page: 1 });
+  const horror = await loadTrendingByGenre({ genre: "horror", country: "JP", window: "week", media: "all", page: 1 });
   assert.equal(horror.length, 1);
   assert.equal(horror[0].id, 401);
 
-  const romanceMovies = await loadTrendingByGenre({ filter: "CN:romance", window: "day", media: "movie", page: 2 });
+  const romanceMovies = await loadTrendingByGenre({ genre: "romance", country: "CN", window: "day", media: "movie", page: 2 });
   assert.equal(romanceMovies.length, 1);
   assert.equal(romanceMovies[0].id, 402);
   assert.equal(romanceMovies[0].mediaType, "movie");
 
-  const koreanPopular = await loadTrendingByGenre({ filter: "KR:all", window: "week", media: "movie", page: 1 });
+  const koreanPopular = await loadTrendingByGenre({ genre: "all", country: "KR", window: "week", media: "movie", page: 1 });
   assert.equal(koreanPopular.length, 1);
   assert.equal(koreanPopular[0].id, 403);
 
