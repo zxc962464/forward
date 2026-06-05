@@ -1,9 +1,9 @@
 WidgetMetadata = {
   id: "forward.trending-by-genre",
   title: "流行趋势分类",
-  version: "1.1.0",
+  version: "1.2.0",
   requiredVersion: "0.0.1",
-  description: "默认展示近期整体流行趋势，也可以按恐怖、动画、爱情、喜剧等类别筛选电影和剧集。",
+  description: "默认展示近期整体流行趋势，也可以按地区、恐怖、动画、爱情、喜剧等条件筛选电影和剧集。",
   author: "Forward",
   site: "https://github.com/InchStudio/ForwardWidgets",
   modules: [
@@ -45,6 +45,25 @@ WidgetMetadata = {
           enumOptions: [
             { title: "本周", value: "week" },
             { title: "今日", value: "day" },
+          ],
+        },
+        {
+          name: "country",
+          title: "地区",
+          type: "enumeration",
+          value: "all",
+          enumOptions: [
+            { title: "全部", value: "all" },
+            { title: "中国大陆", value: "CN" },
+            { title: "中国香港", value: "HK" },
+            { title: "中国台湾", value: "TW" },
+            { title: "日本", value: "JP" },
+            { title: "韩国", value: "KR" },
+            { title: "美国", value: "US" },
+            { title: "英国", value: "GB" },
+            { title: "法国", value: "FR" },
+            { title: "印度", value: "IN" },
+            { title: "泰国", value: "TH" },
           ],
         },
         {
@@ -91,15 +110,29 @@ const GENRES = {
   war: { movie: 10752, tv: 10768 },
 };
 
+const COUNTRIES = {
+  CN: "中国大陆",
+  HK: "中国香港",
+  TW: "中国台湾",
+  JP: "日本",
+  KR: "韩国",
+  US: "美国",
+  GB: "英国",
+  FR: "法国",
+  IN: "印度",
+  TH: "泰国",
+};
+
 async function loadTrendingByGenre(params = {}) {
   const page = Number(params.page || 1);
   const language = params.language || "zh-CN";
   const window = params.window === "day" ? "day" : "week";
   const media = normalizeMedia(params.media);
   const genre = params.genre || "all";
+  const country = normalizeCountry(params.country);
 
-  if (genre !== "all") {
-    return loadDiscoverByGenre(genre, window, media, page, language);
+  if (genre !== "all" || country !== "all") {
+    return loadDiscoverByFilters(genre, country, window, media, page, language);
   }
 
   const res = await Widget.tmdb.get(`trending/${media}/${window}`, {
@@ -140,6 +173,11 @@ function normalizeMedia(media) {
   return "all";
 }
 
+function normalizeCountry(country) {
+  if (COUNTRIES[country]) return country;
+  return "all";
+}
+
 function withMediaType(item, media) {
   if (item.media_type) return item;
   return { ...item, media_type: media };
@@ -153,20 +191,23 @@ function matchesGenre(item, genre) {
   return (item.genre_ids || []).includes(genreId);
 }
 
-async function loadDiscoverByGenre(genre, window, media, page, language) {
+async function loadDiscoverByFilters(genre, country, window, media, page, language) {
   const requests = media === "all" ? ["movie", "tv"] : [media];
   const groups = await Promise.all(
     requests.map(async (mediaType) => {
       const genreId = GENRES[genre] && GENRES[genre][mediaType];
-      if (!genreId) return [];
+      if (genre !== "all" && !genreId) return [];
+      const query = {
+        page,
+        language,
+        sort_by: window === "day" ? "popularity.desc" : "vote_count.desc",
+        include_adult: false,
+      };
+      if (genreId) query.with_genres = genreId;
+      if (country !== "all") query.with_origin_country = country;
+
       const res = await Widget.tmdb.get(`discover/${mediaType}`, {
-        params: {
-          page,
-          language,
-          sort_by: window === "day" ? "popularity.desc" : "vote_count.desc",
-          with_genres: genreId,
-          include_adult: false,
-        },
+        params: query,
       });
       return (res.results || [])
         .map((item) => mapTmdbItem({ ...item, media_type: mediaType }))

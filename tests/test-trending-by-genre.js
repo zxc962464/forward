@@ -52,12 +52,13 @@ global.Widget = {
       }
       if (api === "discover/movie") {
         const genre = options.params && options.params.with_genres;
-        if (genre === 27) {
+        const country = options.params && options.params.with_origin_country;
+        if (genre === 27 && country === "JP") {
           return {
             results: [
               {
                 id: 401,
-                title: "Discover Horror",
+                title: "Japanese Horror",
                 genre_ids: [27],
                 poster_path: "/discover-horror.jpg",
                 vote_average: 7.8,
@@ -65,15 +66,27 @@ global.Widget = {
             ],
           };
         }
-        if (genre === 10749) {
+        if (genre === 10749 && country === "CN") {
           return {
             results: [
               {
                 id: 402,
-                title: "Discover Romance",
+                title: "Chinese Romance",
                 genre_ids: [10749],
                 poster_path: "/discover-romance.jpg",
                 vote_average: 8.1,
+              },
+            ],
+          };
+        }
+        if (!genre && country === "KR") {
+          return {
+            results: [
+              {
+                id: 403,
+                title: "Korean Popular Movie",
+                poster_path: "/discover-kr.jpg",
+                vote_average: 7.3,
               },
             ],
           };
@@ -113,22 +126,27 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(WidgetMetadata.id, "forward.trending-by-genre");
   assert.equal(WidgetMetadata.modules[0].functionName, "loadTrendingByGenre");
   assert.equal(WidgetMetadata.search.functionName, "search");
+  assert.equal(WidgetMetadata.modules[0].params.some((param) => param.name === "country"), true);
 
-  const all = await loadTrendingByGenre({ genre: "all", window: "week", media: "all", page: 1, language: "zh-CN" });
+  const all = await loadTrendingByGenre({ genre: "all", country: "all", window: "week", media: "all", page: 1, language: "zh-CN" });
   assert.equal(all.length, 2);
   assert.equal(all[0].type, "tmdb");
   assert.equal(all[0].mediaType, "movie");
   assert.equal(all[0].posterPath, "/horror.jpg");
   assert.equal(all[0].poster_path, undefined);
 
-  const horror = await loadTrendingByGenre({ genre: "horror", window: "week", media: "all", page: 1 });
+  const horror = await loadTrendingByGenre({ genre: "horror", country: "JP", window: "week", media: "all", page: 1 });
   assert.equal(horror.length, 1);
   assert.equal(horror[0].id, 401);
 
-  const romanceMovies = await loadTrendingByGenre({ genre: "romance", window: "day", media: "movie", page: 2 });
+  const romanceMovies = await loadTrendingByGenre({ genre: "romance", country: "CN", window: "day", media: "movie", page: 2 });
   assert.equal(romanceMovies.length, 1);
   assert.equal(romanceMovies[0].id, 402);
   assert.equal(romanceMovies[0].mediaType, "movie");
+
+  const koreanPopular = await loadTrendingByGenre({ genre: "all", country: "KR", window: "week", media: "movie", page: 1 });
+  assert.equal(koreanPopular.length, 1);
+  assert.equal(koreanPopular[0].id, 403);
 
   const results = await search({ keyword: "show", page: 1, language: "zh-CN" });
   assert.equal(results.length, 1);
@@ -136,8 +154,9 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(results[0].mediaType, "tv");
 
   assert.ok(calls.some((call) => call.api === "trending/all/week" && call.params.language === "zh-CN"));
-  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 27));
-  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 10749 && call.params.page === 2));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 27 && call.params.with_origin_country === "JP"));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 10749 && call.params.with_origin_country === "CN" && call.params.page === 2));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_origin_country === "KR" && call.params.with_genres === undefined));
   assert.ok(calls.some((call) => call.api === "search/multi" && call.params.query === "show"));
 
   console.log("ok", calls);
