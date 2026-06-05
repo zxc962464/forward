@@ -1,9 +1,9 @@
 WidgetMetadata = {
   id: "forward.trending-by-genre",
   title: "流行趋势分类",
-  version: "1.2.0",
+  version: "1.3.0",
   requiredVersion: "0.0.1",
-  description: "默认展示近期整体流行趋势，也可以按地区、恐怖、动画、爱情、喜剧等条件筛选电影和剧集。",
+  description: "默认展示近期整体流行趋势，也可以用组合筛选查看中国爱情片、日本恐怖片等资源。",
   author: "Forward",
   site: "https://github.com/InchStudio/ForwardWidgets",
   modules: [
@@ -15,26 +15,35 @@ WidgetMetadata = {
       requiresWebView: false,
       params: [
         {
-          name: "genre",
-          title: "类别",
+          name: "filter",
+          title: "筛选",
           type: "enumeration",
-          value: "all",
+          value: "all:all",
           enumOptions: [
-            { title: "全部", value: "all" },
-            { title: "动作", value: "action" },
-            { title: "冒险", value: "adventure" },
-            { title: "动画", value: "animation" },
-            { title: "喜剧", value: "comedy" },
-            { title: "犯罪", value: "crime" },
-            { title: "纪录片", value: "documentary" },
-            { title: "剧情", value: "drama" },
-            { title: "家庭", value: "family" },
-            { title: "奇幻", value: "fantasy" },
-            { title: "恐怖", value: "horror" },
-            { title: "爱情", value: "romance" },
-            { title: "科幻", value: "science_fiction" },
-            { title: "悬疑", value: "mystery" },
-            { title: "战争", value: "war" },
+            { title: "全部趋势", value: "all:all" },
+            { title: "爱情片", value: "all:romance" },
+            { title: "恐怖片", value: "all:horror" },
+            { title: "动画片", value: "all:animation" },
+            { title: "喜剧片", value: "all:comedy" },
+            { title: "动作片", value: "all:action" },
+            { title: "科幻片", value: "all:science_fiction" },
+            { title: "中国大陆爱情片", value: "CN:romance" },
+            { title: "中国大陆喜剧片", value: "CN:comedy" },
+            { title: "中国大陆动作片", value: "CN:action" },
+            { title: "中国香港动作片", value: "HK:action" },
+            { title: "中国台湾爱情片", value: "TW:romance" },
+            { title: "日本恐怖片", value: "JP:horror" },
+            { title: "日本动画片", value: "JP:animation" },
+            { title: "日本爱情片", value: "JP:romance" },
+            { title: "韩国爱情片", value: "KR:romance" },
+            { title: "韩国犯罪片", value: "KR:crime" },
+            { title: "美国恐怖片", value: "US:horror" },
+            { title: "美国科幻片", value: "US:science_fiction" },
+            { title: "美国喜剧片", value: "US:comedy" },
+            { title: "英国剧情片", value: "GB:drama" },
+            { title: "法国爱情片", value: "FR:romance" },
+            { title: "印度爱情片", value: "IN:romance" },
+            { title: "泰国恐怖片", value: "TH:horror" },
           ],
         },
         {
@@ -45,25 +54,6 @@ WidgetMetadata = {
           enumOptions: [
             { title: "本周", value: "week" },
             { title: "今日", value: "day" },
-          ],
-        },
-        {
-          name: "country",
-          title: "地区",
-          type: "enumeration",
-          value: "all",
-          enumOptions: [
-            { title: "全部", value: "all" },
-            { title: "中国大陆", value: "CN" },
-            { title: "中国香港", value: "HK" },
-            { title: "中国台湾", value: "TW" },
-            { title: "日本", value: "JP" },
-            { title: "韩国", value: "KR" },
-            { title: "美国", value: "US" },
-            { title: "英国", value: "GB" },
-            { title: "法国", value: "FR" },
-            { title: "印度", value: "IN" },
-            { title: "泰国", value: "TH" },
           ],
         },
         {
@@ -128,8 +118,9 @@ async function loadTrendingByGenre(params = {}) {
   const language = params.language || "zh-CN";
   const window = params.window === "day" ? "day" : "week";
   const media = normalizeMedia(params.media);
-  const genre = params.genre || "all";
-  const country = normalizeCountry(params.country);
+  const filter = parseFilter(params.filter, params.genre, params.country);
+  const genre = filter.genre;
+  const country = filter.country;
 
   if (genre !== "all" || country !== "all") {
     return loadDiscoverByFilters(genre, country, window, media, page, language);
@@ -176,6 +167,21 @@ function normalizeMedia(media) {
 function normalizeCountry(country) {
   if (COUNTRIES[country]) return country;
   return "all";
+}
+
+function parseFilter(filter, legacyGenre, legacyCountry) {
+  if (!filter && (legacyGenre || legacyCountry)) {
+    return {
+      country: normalizeCountry(legacyCountry),
+      genre: legacyGenre || "all",
+    };
+  }
+
+  const parts = String(filter || "all:all").split(":");
+  return {
+    country: normalizeCountry(parts[0]),
+    genre: parts[1] || "all",
+  };
 }
 
 function withMediaType(item, media) {
