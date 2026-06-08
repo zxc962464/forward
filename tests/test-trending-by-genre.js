@@ -51,9 +51,9 @@ global.Widget = {
         };
       }
       if (api === "discover/movie") {
-        const genre = options.params && options.params.with_genres;
+        const genre = String(options.params && options.params.with_genres);
         const country = options.params && options.params.with_origin_country;
-        if (genre === 27 && country === "JP") {
+        if (genre === "27" && country === "JP") {
           return {
             results: [
               {
@@ -66,7 +66,7 @@ global.Widget = {
             ],
           };
         }
-        if (genre === 10749 && country === "CN") {
+        if (genre === "10749" && country === "CN") {
           return {
             results: [
               {
@@ -79,7 +79,20 @@ global.Widget = {
             ],
           };
         }
-        if (!genre && country === "KR") {
+        if (genre === "16" && country === "JP") {
+          return {
+            results: [
+              {
+                id: 404,
+                title: "Japanese Anime Movie",
+                genre_ids: [16],
+                poster_path: "/anime-movie.jpg",
+                vote_average: 8.6,
+              },
+            ],
+          };
+        }
+        if (genre === "undefined" && country === "KR") {
           return {
             results: [
               {
@@ -91,9 +104,37 @@ global.Widget = {
             ],
           };
         }
+        if (genre === "undefined" && options.params && options.params.without_genres === 16) {
+          return {
+            results: [
+              {
+                id: 405,
+                title: "Non Anime Movie",
+                genre_ids: [28],
+                poster_path: "/movie.jpg",
+                vote_average: 7.4,
+              },
+            ],
+          };
+        }
         return { results: [] };
       }
       if (api === "discover/tv") {
+        const genre = String(options.params && options.params.with_genres);
+        const country = options.params && options.params.with_origin_country;
+        if (genre === "16" && country === "JP") {
+          return {
+            results: [
+              {
+                id: 406,
+                name: "Japanese Anime TV",
+                genre_ids: [16],
+                poster_path: "/anime-tv.jpg",
+                vote_average: 8.2,
+              },
+            ],
+          };
+        }
         return { results: [] };
       }
       if (api === "search/multi") {
@@ -133,6 +174,8 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(WidgetMetadata.modules[1].params.some((param) => param.name === "country" && param.type === "constant" && param.value === "CN"), true);
   assert.equal(WidgetMetadata.modules[1].params.some((param) => param.name === "genre"), true);
   assert.equal(WidgetMetadata.modules[1].params.some((param) => param.name === "filter"), false);
+  const mediaParam = WidgetMetadata.modules[1].params.find((param) => param.name === "media");
+  assert.equal(mediaParam.enumOptions.some((option) => option.value === "anime"), true);
 
   const all = await loadTrendingByGenre({ genre: "all", country: "all", window: "week", media: "all", page: 1, language: "zh-CN" });
   assert.equal(all.length, 2);
@@ -154,15 +197,27 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/trending-by-genre.js", "utf8"
   assert.equal(koreanPopular.length, 1);
   assert.equal(koreanPopular[0].id, 403);
 
+  const anime = await loadTrendingByGenre({ genre: "all", country: "JP", window: "week", media: "anime", page: 1 });
+  assert.equal(anime.length, 2);
+  assert.equal(anime[0].mediaType, "movie");
+  assert.equal(anime[1].mediaType, "tv");
+
+  const nonAnimeMovies = await loadTrendingByGenre({ genre: "all", country: "all", window: "week", media: "movie", page: 1 });
+  assert.equal(nonAnimeMovies.length, 1);
+  assert.equal(nonAnimeMovies[0].id, 405);
+
   const results = await search({ keyword: "show", page: 1, language: "zh-CN" });
   assert.equal(results.length, 1);
   assert.equal(results[0].id, 301);
   assert.equal(results[0].mediaType, "tv");
 
   assert.ok(calls.some((call) => call.api === "trending/all/week" && call.params.language === "zh-CN"));
-  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 27 && call.params.with_origin_country === "JP"));
-  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === 10749 && call.params.with_origin_country === "CN" && call.params.page === 2));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === "27" && call.params.with_origin_country === "JP"));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === "10749" && call.params.with_origin_country === "CN" && call.params.page === 2));
   assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_origin_country === "KR" && call.params.with_genres === undefined));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.with_genres === "16" && call.params.with_origin_country === "JP" && call.params.without_genres === undefined));
+  assert.ok(calls.some((call) => call.api === "discover/tv" && call.params.with_genres === "16" && call.params.with_origin_country === "JP" && call.params.without_genres === undefined));
+  assert.ok(calls.some((call) => call.api === "discover/movie" && call.params.without_genres === 16 && call.params.with_genres === undefined));
   assert.ok(calls.some((call) => call.api === "search/multi" && call.params.query === "show"));
 
   console.log("ok", calls);

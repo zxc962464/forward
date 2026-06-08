@@ -1,9 +1,9 @@
 WidgetMetadata = {
   id: "forward.trending-by-genre",
   title: "流行趋势分类",
-  version: "1.4.0",
+  version: "1.5.0",
   requiredVersion: "0.0.1",
-  description: "按国家/地区模块查看近期流行趋势，并在模块内选择爱情、恐怖、动画、喜剧等类别。",
+  description: "按国家/地区模块查看近期流行趋势，并在模块内选择爱情、恐怖、动画、喜剧等类别；电影和剧集默认排除动漫。",
   author: "Forward",
   site: "https://github.com/InchStudio/ForwardWidgets",
   modules: [
@@ -81,6 +81,7 @@ function createRegionModule(id, title, country) {
           { title: "全部", value: "all" },
           { title: "电影", value: "movie" },
           { title: "剧集", value: "tv" },
+          { title: "动漫", value: "anime" },
         ],
       },
       { name: "page", title: "页码", type: "page" },
@@ -105,6 +106,7 @@ const GENRES = {
   mystery: { movie: 9648, tv: 9648 },
   war: { movie: 10752, tv: 10768 },
 };
+const ANIMATION_GENRE_ID = 16;
 
 const COUNTRIES = {
   CN: "中国大陆",
@@ -128,7 +130,7 @@ async function loadTrendingByGenre(params = {}) {
   const genre = filter.genre;
   const country = filter.country;
 
-  if (genre !== "all" || country !== "all") {
+  if (genre !== "all" || country !== "all" || media !== "all") {
     return loadDiscoverByFilters(genre, country, window, media, page, language);
   }
 
@@ -166,7 +168,7 @@ async function search(params = {}) {
 }
 
 function normalizeMedia(media) {
-  if (media === "movie" || media === "tv") return media;
+  if (media === "movie" || media === "tv" || media === "anime") return media;
   return "all";
 }
 
@@ -204,18 +206,19 @@ function matchesGenre(item, genre) {
 }
 
 async function loadDiscoverByFilters(genre, country, window, media, page, language) {
-  const requests = media === "all" ? ["movie", "tv"] : [media];
+  const requests = media === "all" || media === "anime" ? ["movie", "tv"] : [media];
   const groups = await Promise.all(
     requests.map(async (mediaType) => {
-      const genreId = GENRES[genre] && GENRES[genre][mediaType];
-      if (genre !== "all" && !genreId) return [];
+      const genreIds = buildGenreIds(genre, media, mediaType);
+      if (!genreIds) return [];
       const query = {
         page,
         language,
         sort_by: window === "day" ? "popularity.desc" : "vote_count.desc",
         include_adult: false,
       };
-      if (genreId) query.with_genres = genreId;
+      if (genreIds.length > 0) query.with_genres = genreIds.join(",");
+      if (media !== "anime" && genre !== "animation") query.without_genres = ANIMATION_GENRE_ID;
       if (country !== "all") query.with_origin_country = country;
 
       const res = await Widget.tmdb.get(`discover/${mediaType}`, {
@@ -228,6 +231,17 @@ async function loadDiscoverByFilters(genre, country, window, media, page, langua
   );
 
   return groups.flat().sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+}
+
+function buildGenreIds(genre, media, mediaType) {
+  const ids = [];
+  if (media === "anime") ids.push(ANIMATION_GENRE_ID);
+  if (genre !== "all") {
+    const genreId = GENRES[genre] && GENRES[genre][mediaType];
+    if (!genreId) return null;
+    if (!ids.includes(genreId)) ids.push(genreId);
+  }
+  return ids;
 }
 
 function mapTmdbItem(item) {
