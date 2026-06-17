@@ -46,7 +46,7 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/opensubtitles.js", "utf8"));
   assert.equal(WidgetMetadata.modules[0].functionName, "loadSubtitle");
 
   const subtitles = await loadSubtitle({
-    imdbId: "tt1234567",
+    imdb_id: "tt1234567",
     type: "movie",
     title: "Movie",
     languages: "zh-cn,en",
@@ -60,10 +60,12 @@ eval(fs.readFileSync(process.argv[2] || "./widgets/opensubtitles.js", "utf8"));
   assert.equal(subtitles[0].url, "https://dl.opensubtitles.com/subtitle.srt");
 
   const searchCall = calls.find((call) => call.method === "GET");
+  assert.equal(searchCall.url, "https://api.opensubtitles.com/api/v1/subtitles");
   assert.equal(searchCall.params.imdb_id, "1234567");
   assert.equal(searchCall.params.languages, "zh-cn,en");
   assert.equal(searchCall.params.type, "movie");
   assert.equal(searchCall.headers["Api-Key"], "test-key");
+  assert.equal(searchCall.headers["User-Agent"], "ForwardWidget v1.0");
 
   const downloadCall = calls.find((call) => call.method === "POST");
   assert.equal(downloadCall.body.file_id, 9001);

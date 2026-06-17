@@ -1,7 +1,7 @@
 WidgetMetadata = {
   id: "forward.opensubtitles",
   title: "OpenSubtitles 字幕",
-  version: "1.0.0",
+  version: "1.1.0",
   requiredVersion: "0.0.1",
   description: "通过 OpenSubtitles.com API 搜索并获取电影/剧集字幕下载链接。",
   author: "Forward",
@@ -35,9 +35,9 @@ WidgetMetadata = {
   ],
 };
 
-const OPENSUBTITLES_API = "https://www.opensubtitles.com/api/v1";
+const OPENSUBTITLES_API = "https://api.opensubtitles.com/api/v1";
 const DEFAULT_API_KEY = "YV7RGXajPq1tGFgeCYbz1qZZSF0Xukdc";
-const USER_AGENT = "ForwardWidget OpenSubtitles v1.0";
+const USER_AGENT = "ForwardWidget v1.0";
 
 async function loadSubtitle(params = {}) {
   const apiKey = String(params.apiKey || DEFAULT_API_KEY).trim();
@@ -65,11 +65,11 @@ function buildSearchParams(params, languages) {
     order_direction: "desc",
   };
 
-  const imdbId = normalizeImdbId(params.imdbId);
+  const imdbId = normalizeImdbId(params.imdbId || params.imdb_id);
   if (imdbId) {
     query.imdb_id = imdbId;
-  } else if (params.tmdbId) {
-    query.tmdb_id = String(params.tmdbId);
+  } else if (params.tmdbId || params.tmdb_id) {
+    query.tmdb_id = String(params.tmdbId || params.tmdb_id);
   } else if (params.title || params.seriesName) {
     query.query = String(params.seriesName || params.title).trim();
   }
